@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For Jisoo ❤️</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050005;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #start-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 40px;
+            background-color: transparent;
+            color: #ff4d94;
+            border: 2px solid #ff4d94;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 0 20px rgba(255, 77, 148, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            z-index: 10;
+        }
+        #start-btn:hover {
+            background-color: #ff4d94;
+            color: #000;
+            box-shadow: 0 0 40px rgba(255, 77, 148, 0.8);
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+        #message {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 3s;
+            text-shadow: 0 0 10px #ff4d94;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            z-index: 10;
+        }
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" loop>
+        <source src="song.mp3" type="audio/mpeg">
+    </audio>
+
+    <button id="start-btn">Click for Magic ✨</button>
+    <canvas id="canvas"></canvas>
+    <div id="message">I Love You So, Jisoo...<br><span style="font-size: 0.9rem; color: #ccc;">Твой Oppa 🛠️</span></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const music = document.getElementById('bg-music');
+        const message = document.getElementById('message');
+
+        let width, height, cx, cy;
+        let particles = [];
+        let isAnimating = false;
+        let pulse = 1;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            cx = width / 2;
+            cy = height / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Класс частицы
+        class Particle {
+            constructor(isStar = false) {
+                this.isStar = isStar;
+                this.reset();
+            }
+
+            reset() {
+                if (this.isStar) {
+                    // Фоновые звезды
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.size = Math.random() * 1.5;
+                    this.color = '#ffffff';
+                    this.speedX = (Math.random() - 0.5) * 0.5;
+                    this.speedY = (Math.random() - 0.5) * 0.5;
+                } else {
+                    // Частицы сердца (генерируем координаты по формуле)
+                    let t = Math.random() * Math.PI * 2;
+                    let scale = Math.min(width, height) / 45;
+                    
+                    // Формула сердца
+                    let x = 16 * Math.pow(Math.sin(t), 3);
+                    let y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                    
+                    // Разброс для объема
+                    let offsetX = (Math.random() - 0.5) * 15;
+                    let offsetY = (Math.random() - 0.5) * 15;
+
+                    this.baseX = cx + (x * scale) + offsetX;
+                    this.baseY = cy + (y * scale) + offsetY;
+                    
+                    this.x = this.baseX;
+                    this.y = this.baseY;
+                    
+                    this.size = Math.random() * 2 + 0.5;
+                    const colors = ['#ff0044', '#ff4d94', '#ff80bf', '#ff1a66'];
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    // Для пульсации
+                    this.angle = Math.random() * Math.PI * 2;
+                    this.speed = Math.random() * 0.05 + 0.01;
+                }
+                
+                this.alpha = Math.random();
+                this.alphaSpeed = Math.random() * 0.02 + 0.005;
+            }
+
+            update(time) {
+                // Мерцание
+                this.alpha += this.alphaSpeed;
+                if (this.alpha > 1 || this.alpha < 0.1) {
+                    this.alphaSpeed *= -1;
+                }
+
+                if (this.isStar) {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+                        this.reset();
+                    }
+                } else {
+                    // Пульсация формы сердца
+                    // Каждая частица движется по своей маленькой орбите вокруг базовой точки
+                    this.angle += this.speed;
+                    let orbitX = Math.cos(this.angle) * 2;
+                    let orbitY = Math.sin(this.angle) * 2;
+                    
+                    this.x = this.baseX + orbitX * pulse;
+                    this.y = this.baseY + orbitY * pulse;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.alpha;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            // Создаем частицы сердца
+            for (let i = 0; i < 1500; i++) {
+                particles.push(new Particle(false));
+            }
+            // Создаем звезды
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle(true));
+            }
+        }
+
+        function animate(time) {
+            if (!isAnimating) return;
+
+            // Легкий шлейф
+            ctx.fillStyle = 'rgba(5, 0, 5, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Пульс (плавно меняется от 0.9 до 1.1)
+            pulse = 1 + Math.sin(time / 300) * 0.1;
+
+            for (let p of particles) {
+                p.update(time);
+                p.draw();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        startBtn.addEventListener('click', () => {
+            startBtn.style.display = 'none';
+            music.play().catch(e => console.log("Музыка не запущена"));
+            
+            init();
+            isAnimating = true;
+            requestAnimationFrame(animate);
+
+            setTimeout(() => {
+                message.style.opacity = 1;
+            }, 2500);
+        });
+    </script>
+</body>
+</html>
