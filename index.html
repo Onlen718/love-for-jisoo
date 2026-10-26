@@ -10,12 +10,12 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #000000;
+            /* ИСПРАВЛЕНИЕ: Абсолютно черный фон космоса */
+            background-color: #000000; 
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
         }
 
-        /* Эффект вспышки при старте */
         #flash {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -33,7 +33,6 @@
             z-index: 1;
         }
 
-        /* Стили для кнопки (с эффектом стекла) */
         #start-btn {
             position: absolute;
             top: 50%;
@@ -92,7 +91,8 @@
 
     <script>
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Оптимизация
+        // ИСПРАВЛЕНИЕ: Отключаем альфа-канал, чтобы не было серого фона
+        const ctx = canvas.getContext('2d', { alpha: false }); 
         const startBtn = document.getElementById('start-btn');
         const music = document.getElementById('bg-music');
         const message = document.getElementById('message');
@@ -101,9 +101,8 @@
         let width, height, cx, cy;
         let particles = [];
         let isAnimating = false;
-        let timeOffset = 0;
+        let startTime = 0;
 
-        // Настройка размера экрана
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
@@ -121,60 +120,49 @@
 
             reset() {
                 if (this.isStar) {
-                    // Фоновые космические звезды
+                    // Звезды на фоне
                     this.x = Math.random() * width;
                     this.y = Math.random() * height;
-                    this.z = Math.random() * 2 + 0.5; // Глубина для параллакса
-                    this.size = Math.random() * 1.5;
+                    this.size = Math.random() * 1.5 + 0.5;
                     this.color = '#ffffff';
-                    this.speedX = (Math.random() - 0.5) * 0.2;
-                    this.speedY = (Math.random() - 0.5) * 0.2;
+                    this.speedX = (Math.random() - 0.5) * 0.5;
+                    this.speedY = (Math.random() - 0.5) * 0.5;
+                    this.baseAlpha = Math.random();
                 } else {
-                    // Частицы сердца
+                    // Точки сердца
                     let t = Math.random() * Math.PI * 2;
                     let scale = Math.min(width, height) / 45;
                     
-                    // Математическая формула сердца
                     let x = 16 * Math.pow(Math.sin(t), 3);
                     let y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
                     
-                    // Добавляем легкий разброс для "туманности"
-                    let offsetX = (Math.random() - 0.5) * 20;
-                    let offsetY = (Math.random() - 0.5) * 20;
+                    // Разброс для объема
+                    let offsetX = (Math.random() - 0.5) * 15;
+                    let offsetY = (Math.random() - 0.5) * 15;
 
-                    this.baseX = cx + (x * scale) + offsetX;
-                    this.baseY = cy + (y * scale) + offsetY;
+                    this.targetX = cx + (x * scale) + offsetX;
+                    this.targetY = cy + (y * scale) + offsetY;
                     
-                    this.x = this.baseX;
-                    this.y = this.baseY;
+                    // ИСПРАВЛЕНИЕ: Частицы начинают свой путь из центра экрана!
+                    this.x = cx + (Math.random() - 0.5) * 50;
+                    this.y = cy + (Math.random() - 0.5) * 50;
                     
-                    // Размеры частиц от маленьких до больших для объема
                     this.size = Math.random() * 2.5 + 0.5;
                     
-                    // Палитра: красный, розовый, фиолетовый
                     const colors = ['#ff0055', '#ff4d94', '#ff80bf', '#d500f9', '#ff1a66'];
                     this.color = colors[Math.floor(Math.random() * colors.length)];
                     
-                    this.angle = Math.random() * Math.PI * 2;
-                    this.speed = Math.random() * 0.02 + 0.005;
-                    this.vx = (Math.random() - 0.5) * 2;
-                    this.vy = (Math.random() - 0.5) * 2;
+                    this.speed = Math.random() * 0.05 + 0.02; // Скорость полета к цели
+                    this.baseAlpha = Math.random() * 0.8 + 0.2;
                 }
                 
-                this.alpha = 0; // Изначально прозрачные (для плавного появления)
-                this.targetAlpha = Math.random() * 0.8 + 0.2;
-                this.alphaSpeed = Math.random() * 0.03 + 0.01;
+                this.alpha = 0; 
             }
 
             update(time) {
-                // Плавное появление частиц
-                if (this.alpha < this.targetAlpha) {
-                    this.alpha += this.alphaSpeed;
-                } else {
-                    // Мерцание после появления
-                    this.alpha += Math.sin(time * 0.002 + this.angle) * 0.02;
-                    if(this.alpha < 0.1) this.alpha = 0.1;
-                    if(this.alpha > 1) this.alpha = 1;
+                // Плавное появление прозрачности
+                if (this.alpha < this.baseAlpha) {
+                    this.alpha += 0.02;
                 }
 
                 if (this.isStar) {
@@ -184,27 +172,26 @@
                         this.reset();
                     }
                 } else {
-                    // Плавное появление из центра (эффект разлета)
-                    if (time - timeOffset < 1500) {
-                        // Первые 1.5 секунды частицы вылетают из центра экрана
-                        this.x += (this.baseX - cx) * 0.05;
-                        this.y += (this.baseY - cy) * 0.05;
+                    // ЭФФЕКТ СБОРКИ: Точки летят из центра в форму сердца
+                    let timeSinceStart = time - startTime;
+                    
+                    if (timeSinceStart < 2000) {
+                        // Первые 2 секунды летим к цели
+                        this.x += (this.targetX - this.x) * this.speed;
+                        this.y += (this.targetY - this.y) * this.speed;
                     } else {
-                        // Потом начинается пульсация
-                        this.angle += this.speed;
-                        let pulse = 1 + Math.sin(time * 0.003) * 0.15; // Пульс
-                        this.x = this.baseX + Math.cos(this.angle) * 3 * pulse;
-                        this.y = this.baseY + Math.sin(this.angle) * 3 * pulse;
+                        // После сборки - легкая пульсация
+                        let pulse = 1 + Math.sin(time * 0.003) * 0.08;
+                        this.x = this.targetX + Math.sin(time * 0.002 + this.targetX) * 2;
+                        this.y = this.targetY + Math.cos(time * 0.002 + this.targetY) * 2;
                     }
                 }
             }
 
             draw() {
-                // Эффект свечения (как в Инстаграме)
                 ctx.fillStyle = this.color;
                 ctx.globalAlpha = this.alpha;
                 
-                // Если частица большая, делаем ей свечение
                 if (this.size > 1.5) {
                     ctx.shadowBlur = 15;
                     ctx.shadowColor = this.color;
@@ -220,19 +207,18 @@
 
         function init() {
             particles = [];
-            for (let i = 0; i < 2000; i++) particles.push(new Particle(false));
-            for (let i = 0; i < 150; i++) particles.push(new Particle(true));
+            for (let i = 0; i < 1500; i++) particles.push(new Particle(false));
+            for (let i = 0; i < 100; i++) particles.push(new Particle(true));
         }
 
         function animate(time) {
             if (!isAnimating) return;
 
-            // Фон с эффектом "шлейфа" (фейд)
-            // Цвет фона - очень темный фиолетовый
-            ctx.fillStyle = 'rgba(5, 0, 10, 0.2)'; 
+            // ИСПРАВЛЕНИЕ: Заливаем черным цветом (без прозрачности, чтобы не было серого)
+            ctx.fillStyle = '#000000'; 
             ctx.fillRect(0, 0, width, height);
 
-            // Включаем режим сложения цветов (создает эффект неона/тумана)
+            // ИСПРАВЛЕНИЕ: Включаем режим смешивания для эффекта свечения (но без шлейфа)
             ctx.globalCompositeOperation = 'lighter';
 
             for (let p of particles) {
@@ -240,7 +226,6 @@
                 p.draw();
             }
 
-            // Возвращаем режим обратно
             ctx.globalCompositeOperation = 'source-over';
 
             requestAnimationFrame(animate);
@@ -249,18 +234,12 @@
         startBtn.addEventListener('click', () => {
             startBtn.style.display = 'none';
             
-            // Вспышка при старте
             flash.style.opacity = 1;
-            setTimeout(() => {
-                flash.style.opacity = 0;
-                // Очищаем экран перед анимацией
-                ctx.fillStyle = '#050005';
-                ctx.fillRect(0, 0, width, height);
-            }, 100);
+            setTimeout(() => { flash.style.opacity = 0; }, 100);
 
             music.play().catch(e => console.log("Музыка ждет клика"));
             
-            timeOffset = performance.now();
+            startTime = performance.now();
             init();
             isAnimating = true;
             requestAnimationFrame(animate);
@@ -268,7 +247,7 @@
             setTimeout(() => {
                 message.style.opacity = 1;
                 message.style.transform = 'translateY(0)';
-            }, 3000);
+            }, 2500);
         });
     </script>
 </body>
